@@ -9,11 +9,11 @@ bot:
 masterlink:
   module: mlgw
   class: MLGWListener
-weather_yr:
-  module: yr
+weather:
+  module: skills
   class: Weather
   entity: weather.home
-  logging: False
+  logging: True
 utils:
   module: utilities
   class: Monitor
@@ -21,5 +21,3 @@ utils:
     - sun.sun
     - media_player.b_o
     - weather.home
-    
-

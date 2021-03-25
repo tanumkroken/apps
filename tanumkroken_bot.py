@@ -24,6 +24,8 @@ class TelegramBot(hass.Hass):
             self.send_today_weather(user_id)
         elif 'tomorrow' in message:
             self.send_tomorrow_weather(user_id)
+        elif 'two day' in message:
+            self.send_forecast_2days(user_id)
         else:
             msg = 'I did not get that'
             self.call_service('telegram_bot/send_message',
@@ -48,20 +50,25 @@ class TelegramBot(hass.Hass):
     def send_outside_temperature(self, user_id):
         """Send information about today temperature forecast"""
         # Get the weather app
-        weather = self.get_app('weather_yr')
-        t = weather.get_today_temperature()
+        weather = self.get_app('weather')
+        t = weather.temperature_today()
         msg = 'The outside temperature is {}'.format(t)
         self.call_service('telegram_bot/send_message', target=user_id,message=msg)
 
     def send_today_weather(self, user_id):
-        weather = self.get_app('weather_yr')
-        msg = weather.today()
+        weather = self.get_app('weather')
+        msg = weather.forecast_today()
         self.call_service('telegram_bot/send_message',
             target=user_id,message=msg)
 
     def send_tomorrow_weather(self, user_id):
-        weather = self.get_app('weather_yr')
-        msg = weather.tomorrow()
+        weather = self.get_app('weather')
+        msg = weather.forecast_tomorrow()
         self.call_service('telegram_bot/send_message',
             target=user_id,message=msg)
 
+    def send_forecast_2days(self, user_id):
+        weather = self.get_app('weather')
+        msg = weather.forecast_2days()
+        self.call_service('telegram_bot/send_message',
+                          target=user_id,message=msg)
