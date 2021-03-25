@@ -1,0 +1,25 @@
+---
+hello_world:
+  module: hello
+  class: HelloWorld
+bot:
+  module: tanumkroken_bot
+  class: TelegramBot
+  depends: weather_yr
+masterlink:
+  module: mlgw
+  class: MLGWListener
+weather_yr:
+  module: yr
+  class: Weather
+  entity: weather.home
+  logging: False
+utils:
+  module: utilities
+  class: Monitor
+  events:
+    - sun.sun
+    - media_player.b_o
+    - weather.home
+    
+
