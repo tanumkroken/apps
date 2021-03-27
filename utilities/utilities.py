@@ -22,4 +22,3 @@ class Monitor(hass.Hass):
     def changed(self, entity, attribute, old, new, kwargs):
         value = self.get_state(entity, "all")
         self.log(entity + ": " + str(value))
-

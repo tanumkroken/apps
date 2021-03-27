@@ -4,19 +4,28 @@ import appdaemon.plugins.hass.hassapi as hass
 import calendar
 
 
+
 class BasicSkill(hass.Hass):
-    ''' Base class for apps that will listen to HA state changes'''
+    ''' Base class for all skill apps that shall register with the skills Broker'''
 
     def initialize(self):
         # Implement the callback interface that AD expects
         event = self.args['entity'] # The event to listen to
+        self.domain = self.args['domain']
         # For state callbacks, a class defined callback function should look like this:
         # def my_callback(self, entity, attribute, old, new, kwargs)
         self.base_callback(event, None, None, None,None)
         self.listen_state(self.base_callback,event)
 
     def base_callback(self, entity, attribute, old, new, kwargs):
-        ''' The abstract class callback for state-ful classes'''
+        ''' The abstract callback for state-ful classes
+            entity:     The name of the entity the call-back was requested for.
+            attribute:  The name of the attribute the call-back was requested for.
+            old:        The value of the state before the state change.
+            new:        The value of the state after the state change.
+            kwargs:     A dictionary containing any constraints and/or additional user specific keyword arguments
+                        supplied to the listen_state() call.
+        '''
         # Store the call-back arguments
         self.entity = entity # The name of the entity the call-back was requested for
         self.attribute = attribute # The name of the attribute the call-back was requested for
@@ -25,7 +34,7 @@ class BasicSkill(hass.Hass):
         self.user_args = kwargs # A dictionary containing any constraints and/or additional user specific keyword arguments supplied to the listen_state() call.
         # Get all arguments for the requested entity
         args = self.get_state(entity, "all")
-        # Store the state
+        # Store the state value
         self.state = args['state']
         # Store the attribute values
         self.attributes = args['attributes']
@@ -37,25 +46,72 @@ class BasicSkill(hass.Hass):
             self.log(entity + ': Arguments: ' + str(args))
         return
 
+
     def get_attributes(self) -> dict:
+        ''' Return all attributes of the entity '''
         return self.attributes
 
-    def register_skill(self):
+    def register_skills(self, skills:dict):
         '''
-         Register a skill signature with the Broker
+         Register a skill signature with AD
         '''
+        if self.args['logging'] is True:
+            self.log('Function: register_skills')
+        # Register the domain trigger words with the nlp
+        domain = self.domain
 
+        # A domain may have many skills
+        # Register all my skills
+        for signature in skills['methods']:
+            self.log(str(signature))
+            cb = getattr(self, signature) # The callback
+            self.register_service(domain +'/'+ signature, cb)
         return
-
-    def dispatch(self, skill: str):
-        method = getattr(self, skill, lambda :'unknown_skill' )
-
-    def unknown_skill(self):
-        # callback to announce an unknown skill
-        return
-
 
 class Weather(BasicSkill):
+
+
+    def initialize(self):
+        ''' Local initialisation of the instantiated class '''
+        # Always Call the super class initialize() first
+        super().initialize()
+        self.domain = self.args['domain']
+        # Register all my skills
+        self.log(' Initialize Weather')
+        self.register_skills(self.my_skills())
+        # DEBUG: List all services
+        for service in self.list_services():
+            self.log(str(service))
+
+
+
+    def my_skills(self):
+        return {'key_words':{'lang':['en','no'], # domain triggers
+                             'en':['weather','forecast'],
+                             'no':['vær','værmelding']},
+                'methods':
+                    {'temperature_today':{  # Method triggers
+                     'key_words':{'lang':['en','no'],
+                                  'en':[('temperature','today')],
+                                  'no':[('temperatur','idag')]}},
+                    'forecast_today':{
+                        'key_words':{'lang':['en','no'],
+                                     'en':[('forecast','today')],
+                                     'no':[('værmelding','idag')]}},
+                    'forecast_tomorrow':{
+                        'key_words':{'lang':['en','no'],
+                                     'en':[('forecast','tomorrow')],
+                                     'no':[('værmelding','imorgen')]}},
+                    'forecast_2days':{
+                        'key_words':{'lang':['en','no'],
+                                     'en':[('forecast','next','two','days')],
+                                     'no':[('værmelding','neste', 'to', ['dager', 'dagene'])]}},
+                    # 'forecast_weekend':{
+                    #     'key_words':{'lang':['en','no'],
+                    #                  'en':[('forecast','weekend')],
+                    #                  'no':[('værmelding',['weekend','helg'])]}},
+                }}
+
 
     def temperature_today(self):
         t = self.attributes['temperature']

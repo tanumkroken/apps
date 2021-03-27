@@ -2,6 +2,8 @@
 # The skills broker
 
 import appdaemon.plugins.hass.hassapi as hass
+from collections import defaultdict
+
 
 class Broker(hass.Hass):
     ''' The skills broker class'''
@@ -9,8 +11,21 @@ class Broker(hass.Hass):
     def intialize(self):
         ''' Broker initialisation'''
 
-    def do_skill(self, skill):
-        ''' A dispatcher for  the app skill'''
-        for app in self.registered_skill:
-            method = getattr(app, 'dispatch') # getattr() Will return the handle to the named method of the app
-            return method(skill_to_do) # Will call the dispatch method in the app which executes the skill
+        self.domain_triggers = defaultdict(list)
+        self.service_triggers = defaultdict(list)
+
+        for service in self.list_services():
+            self.log(str(service))
+
+    def register_domain_triggers(self, domain, triggers):
+        ''' Register a domain trigger '''
+        self.domain_triggers[domain].append(triggers)
+
+    def register_service_triggers(self, service, triggers):
+        ''' Register a service trigger '''
+        self.service_triggers[service].append(triggers)
+
+    def call_service(self, service, kwargs) -> str:
+        ''' Call a registered service '''
+        response = self.call_service(service, kwargs)
+        return response

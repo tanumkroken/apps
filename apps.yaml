@@ -5,13 +5,16 @@ hello_world:
 bot:
   module: tanumkroken_bot
   class: TelegramBot
-  depends: weather_yr
+  depends:
+    - weather
+    - nlp
 masterlink:
   module: mlgw
   class: MLGWListener
 weather:
   module: skills
   class: Weather
+  domain: weather
   entity: weather.home
   logging: True
 utils:
@@ -21,3 +24,12 @@ utils:
     - sun.sun
     - media_player.b_o
     - weather.home
+broker:
+  module: broker
+  class: Broker
+  logging: True
+  depends: weather
+nlp:
+  module: nlp
+  class: LanguageProcessor
+  logging: True

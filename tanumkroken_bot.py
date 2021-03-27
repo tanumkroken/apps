@@ -17,7 +17,9 @@ class TelegramBot(hass.Hass):
         user_id = payload_event['user_id']
         message = payload_event['text']
         self.greet_user_if_new_conversation(user_id, payload_event['from_first'])
-        if 'temperature' in message:
+        if 'nlp' in message:
+            self.nlp(message, user_id)
+        elif 'temperature' in message:
             # Report the temperature
             self.send_outside_temperature(user_id)
         elif 'weather' in message and 'today' in message:
@@ -54,21 +56,32 @@ class TelegramBot(hass.Hass):
         t = weather.temperature_today()
         msg = 'The outside temperature is {}'.format(t)
         self.call_service('telegram_bot/send_message', target=user_id,message=msg)
+        return
 
     def send_today_weather(self, user_id):
         weather = self.get_app('weather')
         msg = weather.forecast_today()
         self.call_service('telegram_bot/send_message',
             target=user_id,message=msg)
+        return
 
     def send_tomorrow_weather(self, user_id):
         weather = self.get_app('weather')
         msg = weather.forecast_tomorrow()
         self.call_service('telegram_bot/send_message',
             target=user_id,message=msg)
+        return
 
     def send_forecast_2days(self, user_id):
         weather = self.get_app('weather')
         msg = weather.forecast_2days()
         self.call_service('telegram_bot/send_message',
                           target=user_id,message=msg)
+        return
+
+    def nlp(self, message, user_id):
+        nlp = self.get_app('nlp')
+        tokens = nlp.tokenize(message)
+        self.call_service('telegram_bot/send_message',
+                          target=user_id,message=tokens)
+        return
