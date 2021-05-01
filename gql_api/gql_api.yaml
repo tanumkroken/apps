@@ -1,0 +1,12 @@
+transportation:
+   module: ruter
+   class: Ruter
+   entity: 'transportation.tanumkroken'
+   app_name: transportation
+   local_stop_id: NSR:StopPlace:4122
+   time_range: 60
+   departures: 5
+   interval: 60
+   ET-Client-Name: tanumkroken-reiseinfo
+   logging: True
+   gql_server: 'https://api.entur.io/journey-planner/v2/graphql'
