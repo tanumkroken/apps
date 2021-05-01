@@ -1,0 +1,9 @@
+mutation{register_skill(
+    call_back: "forecast_today"
+    lang: "no"
+    matcher:[
+        {ORTH: "vær"  OP: "?"}
+        {ORTH: "været" OP: "?"}
+        {ORTH: "idag" OP: "+"}
+    ])
+{success errors}}

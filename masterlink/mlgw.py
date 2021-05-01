@@ -40,11 +40,11 @@ class MLGWListener(hass.Hass):
         #msg = msg + 'Activity: ' + activity +', '
         #msg = msg + 'Source medium: ' + source_medium +', '
         #msg = msg + 'Track: ' + track + ', '
-        #msg = msg + 'Source ID: '+ sourceID 
-        for key in payload_event:
-            msg = msg + key +': ' + str(payload_event[key]) +', '
-        for key in payload:
-            msg = msg + key +': ' + str(payload[key]) +', '
-        msg = '<<< Payload size: ' + str(size) +', ' + msg + '>>>'
-        self.log(msg)
- 
+        #msg = msg + 'Source ID: '+ sourceID
+        if self.args['logging'] is True:
+            for key in payload_event:
+                msg = msg + key +': ' + str(payload_event[key]) +', '
+            for key in payload:
+                msg = msg + key +': ' + str(payload[key]) +', '
+            msg = '<<< Payload size: ' + str(size) +', ' + msg + '>>>'
+            self.log(msg)

@@ -1,4 +1,7 @@
 ---
+global_modules:
+  - global
+  - broker
 hello_world:
   module: hello
   class: HelloWorld
@@ -6,30 +9,19 @@ bot:
   module: tanumkroken_bot
   class: TelegramBot
   depends:
-    - weather
-    - nlp
+    - broker
 masterlink:
   module: mlgw
   class: MLGWListener
-weather:
-  module: skills
-  class: Weather
-  domain: weather
-  entity: weather.home
-  logging: True
+  logging: False
 utils:
   module: utilities
   class: Monitor
   events:
     - sun.sun
-    - media_player.b_o
     - weather.home
 broker:
   module: broker
   class: Broker
   logging: True
-  depends: weather
-nlp:
-  module: nlp
-  class: LanguageProcessor
-  logging: True
+  gql_server: 'http://192.168.200.65:5000/graphql'
