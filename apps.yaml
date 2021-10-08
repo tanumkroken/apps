@@ -1,15 +1,14 @@
 ---
 global_modules:
   - global
-  - broker
 hello_world:
   module: hello
   class: HelloWorld
 bot:
   module: tanumkroken_bot
   class: TelegramBot
-  depends:
-    - broker
+  log_level: 'DEBUG'
+  gql_server: 'http://macpro.local:5000/graphql'
 masterlink:
   module: mlgw
   class: MLGWListener
@@ -20,8 +19,24 @@ utils:
   events:
     - sun.sun
     - weather.home
-broker:
-  module: broker
-  class: Broker
-  logging: True
-  gql_server: 'http://192.168.200.65:5000/graphql'
+logmlgw:
+  module: utilities
+  class: LogMLGW
+  mongo_host: master.local:27017
+  mongo_db: tanumkroken
+  event: mlgw.MLGW_telegram
+logspotify:
+  module: utilities
+  class: LogSpotify
+  mongo_host: master.local:27017
+  mongo_db: tanumkroken
+  events:
+    - media_player.b_o
+logbertie:
+  module: utilities
+  class: LogBertie
+  mongo_host: master.local:27017
+  mongo_db: tanumkroken
+  events:
+    - device_tracker.automower_r_405x_bertie_device_tracker
+    - vacuum.automower_r_405x_bertie

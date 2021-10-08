@@ -3,51 +3,110 @@ import appdaemon.plugins.hass.hassapi as hass
 import time
 from datetime import datetime
 
+from utilities import Logger
+import appdaemon.plugins.hass.hassapi as hass
+from gql import gql, Client
+from gql.transport.requests import RequestsHTTPTransport
+from gql.dsl import  DSLSchema, DSLType, dsl_gql, DSLField, DSLMutation, DSLQuery
+from graphql.error import GraphQLSyntaxError
+
+
+
+class QuerySkill:
+    ''' Builds a valid GraphQL query using the gql DSL module'''
+    def __init__(self, url: str, logger, log_level: str):
+        self.url = url
+        self.log = Logger(logger, log_level)
+        self.err  = [] # List of  errors
+        transport = RequestsHTTPTransport(url = url)
+        # Create the GraphQL client using the defined transport and fetch the schema
+        self.client = Client(transport=transport, fetch_schema_from_transport=True)
+        self.log.info(f'Registered qql client with server {self.url}')
+        # Query the server for the schema:
+        introspection = '''query IntrospectionQuery {
+            __schema {
+            types {
+            kind
+        name
+        description
+        }
+        }
+        }'''
+        result = self.execute_query_from_str(introspection)
+        # Verify that the schema was fetched
+        if self.client.schema is None:
+            self.log.error('The server did not provide a schema when initializing the client')
+
+    def ask_jeeves(self, user_name: str, sentence: str):
+        ''' Args:
+            ----
+            sentence: the user request to be parsed by the nlp
+        '''
+        response = {}
+        ds = DSLSchema(self.client.schema)
+        query = dsl_gql(DSLQuery(
+            ds.Query.ask_jeeves.args(user=user_name, sentence=sentence).select(
+                ds.Response)))
+        if query is not None:
+            self.log.debug('Ask Jeeves: ' + sentence + ' Result: ' + str(query['data']))
+            response = query['data']
+        return response
+
+    def execute_query_from_str(self, query_str: str)->dict:
+        '''Executes a query from a query string.
+            The query is verified locally before the request is sent to the server'''
+        query = gql(query_str)
+        payload = {}
+        try:
+            payload = self.client.execute(query)
+            if payload is not None:
+                success = True
+            else:
+                self.log.error(f'No response from server {self.url}')
+        except GraphQLSyntaxError as err:
+            self.log.error('Syntax error in query: ' + err.message)
+        return payload
 
 class TelegramBot(hass.Hass):
 
     def initialize(self):
+        # Set the apps log level:
+        if 'log_level' in self.args:
+            self.log_level = self.args['log_level']
+        else:
+            self.log_level = 'INFO'
+        logger = self.log
+        self.log = Logger(logger, self.log_level)
         # Start listening for Telegram updates
         self.listen_event(self.receive_telegram_text, 'telegram_text')
         self.time_between_conversations = 60 * 60
         self.last_conversation = {}
+        self.url = self.args['gql_server'] # The Jeeves URL
+        self.jeeves = QuerySkill(self.url,logger, self.log_level)
 
 
     def receive_telegram_text(self, event_id, payload_event, *args):
         # Do something with the text
         user_id = payload_event['user_id']
         message = payload_event['text']
-        self.greet_user_if_new_conversation(user_id, payload_event['from_first'])
+        user_name = payload_event['user_name']
+        self.ask_jeeves(user_id, user_name, message)
 
 
-    def greet_user_if_new_conversation(self, user_id, user_name):
-        """Say hi when there is a new conversation"""
-        # For new users automatically set the time to zero.
-        if user_id not in self.last_conversation:
-            self.last_conversation[user_id] = 0
-        # Compute the time difference in seconds since the last message.
-        time_diff = time.time() - self.last_conversation[user_id]
-        if time_diff > self.time_between_conversations:
-            msg = f"Hi {user_name}"
-            # Send a message to the user.
+    def ask_jeeves(self, user_id: str, user_name: str, message: str) -> dict:
+        """
+            Executes a query from a query string.
+            The query is verified locally before the request is sent to the server
+        """
+        payload = {}
+        try:
+            payload = self.jeeves.ask_jeeves(user_name, message)
+            if payload is not None:
+                success = True
+            else:
+                self.log.error(f'No response from server {self.url}')
+        except GraphQLSyntaxError as err:
+            self.log.error('Syntax error in query: ' + err.message)
+        for msg in payload:
             self.call_service('telegram_bot/send_message',
-                            target=user_id,
-                            message=msg)
-        self.last_conversation[user_id] = time.time()
-
-
-    def ruter(self, message, user_id):
-        ruter = self.get_app('transportation')
-        departures = ruter.queryNextDeparturesFromYourLocalStop()
-        now = datetime.now()
-        self.log(now, ascii_encode=False)
-        msg = ''
-        for call in departures:
-            call_time =  self.convert_utc(call)
-            self.log(call_time)
-            self.log(str(departures[call]), ascii_encode=False)
-            msg = 'The next bus leaves at {} towards {}'.format(call_time, departures[call][0]['destination'])
-            break
-        self.call_service('telegram_bot/send_message',
-                          target=user_id,message=msg)
-        return
+                      target=user_id,message=msg)

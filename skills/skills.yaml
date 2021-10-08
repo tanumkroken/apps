@@ -1,8 +1,0 @@
-# Register skills
-yr:
-  module: skills
-  class: Yr
-  entity: weather.home
-  domain: weather
-  gql_server: 'http://192.168.200.65:5000/graphql'
-  global_dependencies: broker
