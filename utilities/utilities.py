@@ -4,7 +4,9 @@ import hassapi as hass
 import arrow
 from pymongo import MongoClient
 from urllib.parse import quote_plus
-import logging
+import requests
+import datetime
+import json
 
 TEST_ENV = False # False when the class is instantiated under appdaemon
 
@@ -133,15 +135,12 @@ class DateTimeConverter:
         return date.humanize()
 
 
-
-"""
-Monitor events and output changes to the verbose_log. Nice for debugging purposes.
-Arguments:
- - events: List of events to monitor
-"""
-
-
 class Monitor(hass.Hass):
+    """
+    Monitor events and output changes to the verbose_log. Nice for debugging purposes.
+    Arguments:
+     - events: List of events to monitor
+    """
     def initialize(self):
         events = self.args["events"]
 
@@ -156,6 +155,13 @@ class Monitor(hass.Hass):
 
 
 class LogMLGW(hass.Hass):
+    """
+    LogMLGW listens to events from the matserlink gateway and ingest events to the MongoDB.
+    Arguments:
+     - args["event"]: str. The event in Hass to listen to
+     - args["mongo_host"]: str. The Mongo DB host name or ip address
+     - args["mongo_db"]: str. The name of the mongo database
+    """
     def initialize(self):
         event = self.args["event"]
         host = self.args["mongo_host"]
@@ -169,21 +175,30 @@ class LogMLGW(hass.Hass):
         self.listen_event(self.receive_mlgw_msg, 'mlgw.ML_telegram')
 
     def receive_mlgw_msg(self, event_id, payload_event, *args):
+        """
+        The callback function receiving the event from Hass
+        :param: event_id: The event id from Hass
+        :param: payload_event: The event payload.
+        """
         db = self.get_db(self.mongo_db)
         if db is not None:
             mlgw = db.mlgw
-            id = mlgw.insert_one(payload_event)
+            id = mlgw.insert_one(payload_event).inserted_id
             self.log(f'Inserted document with id {id} in collection {mlgw}')
         else:
             self.log(f'No mongo database {db}', log_level='ERROR')
 
-    def get_db(self, db):
+    def get_db(self, db: str) -> MongoClient:
+        """
+        Function returning the instance if the MongoDB
+        :param: db: The name of the Mongo db collection
+        :return: The MongoClient instance of the collection. If non-existent, returns None.
+        """
         try:
             return self.client[db]
         except KeyError as err:
             self.log(f"Non-existent mongo db {db}. Error: " +err)
             return None
-
 
 
 class LogSpotify(hass.Hass):
@@ -207,7 +222,7 @@ class LogSpotify(hass.Hass):
         db = self.get_db(self.mongo_db)
         if db is not None:
             spotify = db.spotify
-            id = spotify.insert_one(value)
+            id = spotify.insert_one(value).inserted_id
             self.log(f'Inserted document with id {id} in collection {spotify}')
         else:
             self.log(f'No mongo database {db}', log_level='ERROR')
@@ -240,7 +255,7 @@ class LogBertie(hass.Hass):
         db = self.get_db(self.mongo_db)
         if db is not None:
             bertie = db.bertie
-            id = bertie.insert_one(value)
+            id = bertie.insert_one(value).inserted_id
             self.log(f'Inserted document with id {id} in collection {bertie}')
         else:
             self.log(f'No mongo database {db}', log_level='ERROR')
@@ -252,3 +267,44 @@ class LogBertie(hass.Hass):
             self.log(f"Non-existent mongo db {db}. Error: " +err)
             return None
 
+class CurrentSpotPrice(hass.Hass):
+    ''' Get the current spot price from TanumkrokenAPI '''
+    def initialize(self):
+        # Get the configs
+        # Create a time object for 5 minutes over an hour
+        runtime = datetime.time(0, 5, 0)
+        # Schedule an hourly callback that will call run_hourly() at 5 minutes over every hour
+        self.handle = self.run_hourly(self.get_current_spot_price, runtime)
+
+    # Our callback function will be called by the scheduler every 5 min over the hour
+    def get_current_spot_price(self, kwargs):
+        url = self.args["api_url"]
+        self.log(f'requesting from {url}')
+        r = requests.get(url)
+        if r.status_code == 200:
+            spot_price = json.loads(r.text)
+            price = spot_price['SpotPrice'].get('Price')
+            ts = spot_price['SpotPrice'].get('TimeStamp')
+            msg = f'The spot price at {ts} is {price}'
+        else:
+            msg = f'Status code : {r.status_code}, {r.text}'
+        self.notify(msg, title='Spot price', name='mobile_app_macpro')
+        self.log(msg)
+
+class DayaheadSpotPrice(hass.Hass):
+    ''' Get the day ahead spot price from TanumkrokenAPI '''
+    def initialize(self):
+        # Get the configs
+        # Create a time object for 5 minutes over an hour
+        runtime = datetime.time(15, 0, 0)
+        # Schedule an daily callback that will call 15:00  every day
+        self.handle = self.run_daily(self.day_ahead_spot_price, runtime)
+
+    # Our callback function will be called by the scheduler every 5 min over the hour
+    def day_ahead_spot_price(self, kwargs):
+        url = self.args["api_url"]
+        self.log(f'requesting from {url}')
+        r = requests.get(url)
+        msg = f'Status code : {r.status_code}, {r.text}'
+        self.notify(msg, title='Day ahead spot price', name='mobile_app_macpro')
+        self.log(msg)

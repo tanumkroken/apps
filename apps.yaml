@@ -40,3 +40,12 @@ logbertie:
   events:
     - device_tracker.automower_r_405x_bertie_device_tracker
     - vacuum.automower_r_405x_bertie
+spotprice:
+  module: utilities
+  class: CurrentSpotPrice
+  api_url: 'http://macpro.local:8080/energy/get_current_spot_price/'
+  log_level: 'DEBUG'
+dayaheadprice:
+  module: utilities
+  class: DayaheadSpotPrice
+  api_url: 'http://0.0.0.0:8080/energy/ingest_day_ahead_prices/NOK'

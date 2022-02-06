@@ -11,7 +11,6 @@ from gql.dsl import  DSLSchema, DSLType, dsl_gql, DSLField, DSLMutation, DSLQuer
 from graphql.error import GraphQLSyntaxError
 
 
-
 class QuerySkill:
     ''' Builds a valid GraphQL query using the gql DSL module'''
     def __init__(self, url: str, logger, log_level: str):
